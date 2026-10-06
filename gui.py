@@ -122,3 +122,117 @@ class EscapeRoomGUI:
     def _quit_game(self):
         if messagebox.askyesno("Quit", "Are you sure you want to quit?"):
             self.root.destroy()
+
+    # ------------------------------------------------------------------
+    # building the layout
+    # ------------------------------------------------------------------
+    def _build_layout(self):
+        # everything for the game screen lives inside this one frame, so
+        # we can destroy it in one shot when the player starts a new game
+        self.game_frame = tk.Frame(self.root, bg=BG_COLOR)
+        self.game_frame.pack(fill="both", expand=True)
+
+        # top title bar + menu buttons (New Game / Quit)
+        title_frame = tk.Frame(self.game_frame, bg=BG_COLOR)
+        title_frame.pack(fill="x", pady=(10, 5))
+
+        tk.Label(
+            title_frame, text="TEXT ADVENTURE PUZZLE ENGINE",
+            font=FONT_TITLE, bg=BG_COLOR, fg=ACCENT_COLOR
+        ).pack(side="left", padx=(20, 0), expand=True)
+
+        menu_frame = tk.Frame(title_frame, bg=BG_COLOR)
+        menu_frame.pack(side="right", padx=20)
+        tk.Button(menu_frame, text="New Game", width=10, command=self._new_game).pack(side="left", padx=4)
+        tk.Button(menu_frame, text="Quit", width=8, command=self._quit_game).pack(side="left", padx=4)
+
+        # ---- Gemini connection indicator ----
+        # small coloured dot + label showing whether the AI hint feature is
+        # actually working. Starts grey ("checking..."), then the real
+        # check runs in a background thread so it doesn't freeze the GUI
+        # while it waits on the network, and updates to green/red when done.
+        ai_status_frame = tk.Frame(self.game_frame, bg=BG_COLOR)
+        ai_status_frame.pack(fill="x", padx=20, pady=(0, 5))
+
+        self.ai_status_dot = tk.Label(
+            ai_status_frame, text="\u25cf", font=("Segoe UI", 11),
+            bg=BG_COLOR, fg=NEUTRAL_COLOR
+        )
+        self.ai_status_dot.pack(side="left")
+
+        self.ai_status_label = tk.Label(
+            ai_status_frame, text="AI Hints: checking connection...",
+            font=("Segoe UI", 9), bg=BG_COLOR, fg=TEXT_COLOR
+        )
+        self.ai_status_label.pack(side="left", padx=(5, 0))
+
+        self._check_ai_connection()
+
+        # main area split into left (room info) and right (map + inventory)
+        main_frame = tk.Frame(self.game_frame, bg=BG_COLOR)
+        main_frame.pack(fill="both", expand=True, padx=10, pady=5)
+
+        left_frame = tk.Frame(main_frame, bg=BG_COLOR)
+        left_frame.pack(side="left", fill="both", expand=True)
+
+        right_frame = tk.Frame(main_frame, bg=BG_COLOR, width=280)
+        right_frame.pack(side="right", fill="y", padx=(10, 0))
+        right_frame.pack_propagate(False)
+
+        # ---- room description box ----
+        self.room_name_label = tk.Label(
+            left_frame, text="", font=FONT_BOLD, bg=BG_COLOR, fg=TEXT_COLOR
+        )
+        self.room_name_label.pack(anchor="w")
+
+        self.room_text = tk.Text(
+            left_frame, height=8, wrap="word", bg=PANEL_COLOR, fg=TEXT_COLOR,
+            font=FONT_NORMAL, relief="flat", padx=10, pady=10
+        )
+        self.room_text.pack(fill="both", expand=True, pady=(5, 5))
+        self.room_text.config(state="disabled")
+
+        # ---- items in this room - clickable buttons, one per item ----
+        # (replaces the old "type the item name" dialog)
+        self.items_frame = tk.Frame(left_frame, bg=BG_COLOR)
+        self.items_frame.pack(fill="x", pady=(0, 10))
+
+        # ---- direction buttons ----
+        move_frame = tk.Frame(left_frame, bg=BG_COLOR)
+        move_frame.pack(pady=(0, 10))
+
+        tk.Button(move_frame, text="North", width=10, command=lambda: self._move("north")).grid(row=0, column=1)
+        tk.Button(move_frame, text="West", width=10, command=lambda: self._move("west")).grid(row=1, column=0)
+        tk.Button(move_frame, text="East", width=10, command=lambda: self._move("east")).grid(row=1, column=2)
+        tk.Button(move_frame, text="South", width=10, command=lambda: self._move("south")).grid(row=2, column=1)
+
+        # ---- action buttons ----
+        action_frame = tk.Frame(left_frame, bg=BG_COLOR)
+        action_frame.pack(pady=(0, 10))
+
+        tk.Button(action_frame, text="Solve Puzzle", width=14, command=self._solve_puzzle).grid(row=0, column=0, padx=4)
+        tk.Button(action_frame, text="Use Item", width=14, command=self._use_item).grid(row=0, column=1, padx=4)
+        tk.Button(action_frame, text="Hint", width=14, command=self._get_hint, bg=ACCENT_COLOR).grid(row=0, column=2, padx=4)
+
+        # ---- status bar (moves / score) ----
+        self.status_label = tk.Label(
+            left_frame, text="", font=FONT_NORMAL, bg=BG_COLOR, fg=TEXT_COLOR
+        )
+        self.status_label.pack(anchor="w")
+
+        # ---- right side: map + inventory ----
+        tk.Label(right_frame, text="MAP", font=FONT_BOLD, bg=BG_COLOR, fg=ACCENT_COLOR).pack(anchor="w")
+        self.map_canvas = tk.Canvas(right_frame, bg=PANEL_COLOR, height=400, highlightthickness=0)
+        self.map_canvas.pack(fill="x", pady=(5, 15))
+
+        tk.Label(right_frame, text="INVENTORY", font=FONT_BOLD, bg=BG_COLOR, fg=ACCENT_COLOR).pack(anchor="w")
+        self.inventory_listbox = tk.Listbox(
+            right_frame, bg=PANEL_COLOR, fg=TEXT_COLOR, relief="flat",
+            font=FONT_NORMAL, height=8
+        )
+        self.inventory_listbox.pack(fill="x", pady=(5, 15))
+
+        save_frame = tk.Frame(right_frame, bg=BG_COLOR)
+        save_frame.pack(fill="x")
+        tk.Button(save_frame, text="Save", width=10, command=self._save_game).pack(side="left", padx=(0, 5))
+        tk.Button(save_frame, text="Load", width=10, command=self._load_game).pack(side="left")

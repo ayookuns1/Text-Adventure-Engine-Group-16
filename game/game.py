@@ -65,3 +65,49 @@ class Game:
         room.puzzle.solve_with_item(self.player.inventory)
         self.player.add_score(15)
         return True
+
+    def hints_remaining(self):
+        limit = self.settings["hint_limit"]
+        if limit is None:
+            return None   # unlimited
+        return max(limit - self.player.hints_used, 0)
+
+    def get_hint(self):
+        room = self.player.current_room
+        if room.puzzle is None or room.puzzle.solved:
+            return None
+
+        remaining = self.hints_remaining()
+        if remaining is not None and remaining <= 0:
+            raise NoHintsLeftError()
+
+        # A hint costs one use whether it comes from the AI or (if the AI
+        # call fails) the static fallback - both are still "using a hint"
+        # from the player's point of view, so we check the limit up front
+        # and then always increment, regardless of which path is taken.
+        # NOTE: the caller (GUI) still needs to catch HintServiceError and
+        # show room.puzzle.get_hint() as the fallback text when this raises.
+        self.player.hints_used += 1
+        return self.hint_provider.get_ai_hint(room.puzzle.prompt, room.description)
+
+    def get_static_hint(self):
+        room = self.player.current_room
+        if room.puzzle is None:
+            return None
+        return room.puzzle.get_hint()
+
+    def save_game(self):
+        data = {
+            "room_name": self.player.current_room.name,
+            "moves": self.player.moves,
+            "score": self.player.score,
+            "hints_used": self.player.hints_used,
+            "inventory": self.player.inventory.get_names(),
+        }
+        with open(SAVE_FILE, "w") as f:
+            json.dump(data, f, indent=2)
+
+    def load_game(self):
+        with open(SAVE_FILE, "r") as f:
+            data = json.load(f)
+        return data

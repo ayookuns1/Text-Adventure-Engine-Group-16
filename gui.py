@@ -359,3 +359,125 @@ class EscapeRoomGUI:
                     px + box_size / 2, py + box_size / 2,
                     text=label, fill=TEXT_COLOR, font=("Segoe UI", 8)
                 )
+
+    # ------------------------------------------------------------------
+    # button actions - each one talks to self.game and catches errors
+    # ------------------------------------------------------------------
+    def _move(self, direction):
+        try:
+            self.game.move(direction)
+            self._refresh_room()
+        except GameError as e:
+            messagebox.showwarning("Can't go that way", str(e))
+
+    def _take_item_by_name(self, item_name):
+        try:
+            item = self.game.take_item(item_name)
+            messagebox.showinfo("Picked up", f"You picked up: {item.name}")
+            self._refresh_room()
+        except GameError as e:
+            messagebox.showwarning("Can't take that", str(e))
+
+    def _solve_puzzle(self):
+        room = self.game.get_current_room()
+        if room.puzzle is None:
+            messagebox.showinfo("No puzzle", "There's nothing to solve here.")
+            return
+        if isinstance(room.puzzle, ItemPuzzle):
+            messagebox.showinfo("Wrong approach", "This puzzle needs an item, not an answer. Try the Use Item button.")
+            return
+
+        answer = simpledialog.askstring("Solve Puzzle", room.puzzle.prompt)
+        if answer is None:
+            return
+
+        try:
+            self.game.solve_puzzle(answer)
+            messagebox.showinfo("Correct!", "The way forward is open.")
+            self._refresh_room()
+        except GameError as e:
+            messagebox.showwarning("Not quite", str(e))
+
+    def _use_item(self):
+        names = self.game.player.inventory.get_names()
+
+        if not names:
+            messagebox.showinfo("Nothing to use", "Your inventory is empty.")
+            return
+
+        # Always let the player explicitly pick which item to use, even if
+        # they only have one - a small popup with a button per item, so
+        # nothing gets used by accident and nothing needs to be typed.
+        picker = tk.Toplevel(self.root)
+        picker.title("Use Item")
+        picker.configure(bg=PANEL_COLOR)
+
+        width = 260
+        height = 60 + 40 * len(names)
+        # center the popup over the main window instead of the top-left corner
+        self.root.update_idletasks()
+        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - (width // 2)
+        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - (height // 2)
+        picker.geometry(f"{width}x{height}+{x}+{y}")
+
+        picker.transient(self.root)
+        picker.grab_set()
+
+        tk.Label(
+            picker, text="Which item do you want to use?",
+            font=FONT_NORMAL, bg=PANEL_COLOR, fg=TEXT_COLOR
+        ).pack(pady=(15, 10))
+
+        for name in names:
+            tk.Button(
+                picker, text=name, width=20,
+                command=lambda n=name: self._confirm_use_item(picker, n)
+            ).pack(pady=3)
+
+    def _confirm_use_item(self, picker_window, item_name):
+        picker_window.destroy()
+        try:
+            self.game.use_item(item_name)
+            messagebox.showinfo("It worked!", f"You used the {item_name}.")
+            self._refresh_room()
+        except GameError as e:
+            messagebox.showwarning("Didn't work", str(e))
+
+    def _get_hint(self):
+        room = self.game.get_current_room()
+        if room.puzzle is None or room.puzzle.solved:
+            messagebox.showinfo("No hint needed", "There's no active puzzle here.")
+            return
+
+        try:
+            hint = self.game.get_hint()
+            messagebox.showinfo("AI Hint", hint)
+        except NoHintsLeftError as e:
+            messagebox.showwarning("Out of hints", str(e))
+        except HintServiceError:
+            # AI hint failed for whatever reason, fall back to the normal hint
+            fallback = self.game.get_static_hint()
+            messagebox.showinfo("Hint", fallback)
+
+        self._refresh_status()
+
+    def _save_game(self):
+        self.game.save_game()
+        messagebox.showinfo("Saved", "Your progress has been saved.")
+
+    def _load_game(self):
+        try:
+            data = self.game.load_game()
+            messagebox.showinfo("Loaded", f"Save data found:\n{data}\n\n(Full state restore not implemented yet)")
+        except FileNotFoundError:
+            messagebox.showwarning("No save found", "There is no saved game yet.")
+
+
+def main():
+    root = tk.Tk()
+    app = EscapeRoomGUI(root)
+    root.mainloop()
+
+
+if __name__ == "__main__":
+    main()

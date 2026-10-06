@@ -236,3 +236,66 @@ class EscapeRoomGUI:
         save_frame.pack(fill="x")
         tk.Button(save_frame, text="Save", width=10, command=self._save_game).pack(side="left", padx=(0, 5))
         tk.Button(save_frame, text="Load", width=10, command=self._load_game).pack(side="left")
+
+    # ------------------------------------------------------------------
+    # refreshing the screen
+    # ------------------------------------------------------------------
+    def _refresh_room(self):
+        room = self.game.get_current_room()
+
+        self.room_name_label.config(text=room.name)
+
+        self.room_text.config(state="normal")
+        self.room_text.delete("1.0", tk.END)
+        self.room_text.insert(tk.END, room.describe())
+        self.room_text.config(state="disabled")
+
+        self._refresh_items()
+        self._refresh_inventory()
+        self._refresh_status()
+        self._draw_map()
+
+        if self.game.won:
+            messagebox.showinfo("You escaped!", f"You made it out!\n\nMoves: {self.game.player.moves}\nScore: {self.game.player.score}")
+
+    def _refresh_items(self):
+        # rebuild the row of "take item" buttons for whatever is in the
+        # current room - clears out the old buttons first
+        for widget in self.items_frame.winfo_children():
+            widget.destroy()
+
+        room = self.game.get_current_room()
+
+        # if the room's puzzle guards the items, don't show them until
+        # the puzzle is solved (otherwise it spoils the puzzle - you'd
+        # see the item sitting there behind a "locked" message)
+        if room.guards_items and room.puzzle and not room.puzzle.solved:
+            return
+
+        if not room.items:
+            return
+
+        tk.Label(
+            self.items_frame, text="Take:", font=FONT_NORMAL,
+            bg=BG_COLOR, fg=TEXT_COLOR
+        ).pack(side="left", padx=(0, 8))
+
+        for item in room.items:
+            tk.Button(
+                self.items_frame, text=item.name,
+                command=lambda name=item.name: self._take_item_by_name(name)
+            ).pack(side="left", padx=3)
+
+    def _refresh_inventory(self):
+        self.inventory_listbox.delete(0, tk.END)
+        for name in self.game.player.inventory.get_names():
+            self.inventory_listbox.insert(tk.END, name)
+
+    def _refresh_status(self):
+        p = self.game.player
+        remaining = self.game.hints_remaining()
+        hints_text = "unlimited" if remaining is None else str(remaining)
+        self.status_label.config(
+            text=f"Difficulty: {self.game.difficulty.title()}   "
+                 f"Moves: {p.moves}   Score: {p.score}   Hints left: {hints_text}"
+        )

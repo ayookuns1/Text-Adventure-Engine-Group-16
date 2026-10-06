@@ -148,3 +148,56 @@ def build_map(difficulty="medium"):
     # (only the key remains - it's the only item that's actually needed
     # anywhere in the game)
     brass_key = Item("Brass Key", "A small tarnished key.")
+
+    # ---------------- rooms ----------------
+    entrance = Room(
+        "Entrance Hall",
+        "A dim hallway with a locked door to the north. Dust is everywhere.",
+        puzzle=entrance_puzzle,
+        pos=(0, 0),
+        guarded_exit="north"
+    )
+
+    hallway = Room(
+        "Hallway",
+        "A narrow hallway with old paintings on the wall.",
+        puzzle=hallway_puzzle,
+        pos=(0, 1),
+        guarded_exit="north"
+    )
+
+    library = Room(
+        "Library",
+        "Shelves of old books. A lockbox sits on a table.",
+        puzzle=library_puzzle,
+        pos=(0, 2),
+        guarded_exit="north"   # only the way to the Vault is locked -
+                                # "east" to the Workshop is always open
+    )
+
+    workshop = Room(
+        "Workshop",
+        "Tools hang on the wall. Something brass glints under a workbench, "
+        "but it's bolted behind a panel with a riddle carved into it.",
+        puzzle=workshop_puzzle,
+        items=[brass_key],
+        pos=(1, 2),
+        guarded_exit=None,        # you can always walk back out (west)
+        guards_items=True          # ...but you can't TAKE the key until
+                                    # the riddle here is solved
+    )
+
+    vault_room = Room(
+        "Vault Room",
+        "A heavy steel vault with a small keyhole.",
+        puzzle=vault_puzzle,
+        pos=(0, 3),
+        guarded_exit="north"   # "south" back to the Library always stays open,
+                                # so you can never get stuck in here
+    )
+
+    exit_room = Room(
+        "Exit",
+        "Sunlight is coming in. You made it out!",
+        pos=(0, 4)
+    )

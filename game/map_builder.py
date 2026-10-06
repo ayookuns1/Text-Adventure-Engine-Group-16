@@ -201,3 +201,20 @@ def build_map(difficulty="medium"):
         "Sunlight is coming in. You made it out!",
         pos=(0, 4)
     )
+
+    # ---------------- connections ----------------
+    entrance.connect("north", hallway)
+    hallway.connect("south", entrance)
+
+    hallway.connect("north", library)
+    library.connect("south", hallway)
+
+    library.connect("east", workshop)
+    workshop.connect("west", library)
+
+    library.connect("north", vault_room)
+    vault_room.connect("south", library)
+
+    vault_room.connect("north", exit_room)
+
+    return entrance

@@ -299,3 +299,63 @@ class EscapeRoomGUI:
             text=f"Difficulty: {self.game.difficulty.title()}   "
                  f"Moves: {p.moves}   Score: {p.score}   Hints left: {hints_text}"
         )
+
+    def _draw_map(self):
+        # Draws a simple grid of boxes based on each room's (x, y) position.
+        # Only rooms the player has already visited are shown by name -
+        # everything else stays blank so it feels like you're discovering it.
+        self.map_canvas.delete("all")
+
+        box_size = 48
+        gap = 12
+        origin_x = 25
+        origin_y = 15
+
+        # walk the whole map starting from the entrance so we can draw
+        # every room (visited or not) in the right spot
+        all_rooms = {}
+        to_visit = [self.game.start_room]
+        while to_visit:
+            room = to_visit.pop()
+            if room.name in all_rooms:
+                continue
+            all_rooms[room.name] = room
+            for neighbour in room.exits.values():
+                if neighbour.name not in all_rooms:
+                    to_visit.append(neighbour)
+
+        current_room = self.game.get_current_room()
+
+        # Room.pos uses y going UP as you head north (Entrance y=0, further
+        # north = higher y). Tkinter's canvas has y=0 at the TOP and grows
+        # DOWN, so we flip it here - otherwise "going north" would visually
+        # move you further down the screen, which is backwards.
+        max_y = max(room.pos[1] for room in all_rooms.values())
+
+        for room in all_rooms.values():
+            x, y = room.pos
+            flipped_y = max_y - y
+            px = origin_x + x * (box_size + gap)
+            py = origin_y + flipped_y * (box_size + gap)
+
+            visited = room.name in self.game.player.visited_rooms
+            is_current = room is current_room
+
+            if is_current:
+                fill = ACCENT_COLOR
+            elif visited:
+                fill = "#3a3f4b"
+            else:
+                fill = PANEL_COLOR
+
+            self.map_canvas.create_rectangle(
+                px, py, px + box_size, py + box_size,
+                fill=fill, outline="#555", width=1
+            )
+
+            if visited:
+                label = room.name.split()[0]  # short label so it fits in the box
+                self.map_canvas.create_text(
+                    px + box_size / 2, py + box_size / 2,
+                    text=label, fill=TEXT_COLOR, font=("Segoe UI", 8)
+                )

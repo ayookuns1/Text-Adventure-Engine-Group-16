@@ -41,3 +41,27 @@ class Game:
         item = room.take_item(item_name)          # can raise ItemNotFoundError
         self.player.inventory.add_item(item)       # can raise InventoryFullError
         return item
+
+    def solve_puzzle(self, answer):
+        room = self.player.current_room
+        if room.puzzle is None:
+            raise GameError("There is nothing to solve in this room.")
+        if room.puzzle.solved:
+            raise GameError("This puzzle is already solved.")
+        if isinstance(room.puzzle, ItemPuzzle):
+            raise GameError("This puzzle needs an item, not an answer. Try using an item instead.")
+
+        room.puzzle.solve(answer)   # can raise WrongAnswerError
+        self.player.add_score(10)
+        return True
+
+    def use_item(self, item_name):
+        room = self.player.current_room
+        if not isinstance(room.puzzle, ItemPuzzle):
+            raise GameError("There's nothing to use an item on here.")
+        if not self.player.inventory.has_item(item_name):
+            raise ItemNotFoundError(item_name)
+
+        room.puzzle.solve_with_item(self.player.inventory)
+        self.player.add_score(15)
+        return True

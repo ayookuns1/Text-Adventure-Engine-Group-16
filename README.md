@@ -10,8 +10,8 @@ API when you're stuck.
 pip install -r requirements.txt
 ```
 
-To enable AI hints, open `game/ai_hint.py` and put your Gemini API key where
-it says `PUT_YOUR_API_KEY_HERE` (get a free key at
+To enable AI hints, set the `GEMINI_API_KEY` environment variable to your
+Gemini API key before running the game (get a free key at
 https://aistudio.google.com/app/apikey). Without a key, the Hint button
 still works - it just shows the built-in hint instead of an AI-generated one.
 

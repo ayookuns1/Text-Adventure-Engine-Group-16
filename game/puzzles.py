@@ -43,3 +43,30 @@ class RiddlePuzzle(Puzzle):
 
     def check_answer(self, answer):
         return answer.lower().strip() == self.answer
+
+
+class CodePuzzle(Puzzle):
+    # solved by typing a numeric code, like a lock combo
+    def __init__(self, prompt, code, hint, max_attempts=4):
+        super().__init__(prompt, hint, max_attempts)
+        self.code = code.strip()
+
+    def check_answer(self, answer):
+        cleaned = answer.strip().replace(" ", "")
+        return cleaned == self.code
+
+
+class ItemPuzzle(Puzzle):
+    # solved by using an item from the inventory instead of typing an answer
+    def __init__(self, prompt, required_item, hint):
+        super().__init__(prompt, hint, max_attempts=99)
+        self.required_item = required_item.lower()
+
+    def check_answer(self, answer):
+        return answer.lower().strip() == self.required_item
+
+    def solve_with_item(self, inventory):
+        if not inventory.has_item(self.required_item):
+            raise ItemNotFoundError(self.required_item)
+        self.solved = True
+        return True
